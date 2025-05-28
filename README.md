@@ -53,4 +53,4 @@ Default - Empty
 
 Enter emote set IDs that will be fetched first before the global emotes. You can use this to use your favourite emotes by entering your favourite community set emotes or make your own and use that set here. You can disable global emotes and only use emote set IDs as well. You can enter as many emote set IDs as you would like but will increase the time it takes to fetch them. Each emote set ID will grab 10 pages as all the sets I have seen have a limit of 1k emotes. Each page has around 100 emotes
 
-![EmoteIDs photo]()
+![EmoteIDs photo](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/emoteIDs.png?raw=true)
