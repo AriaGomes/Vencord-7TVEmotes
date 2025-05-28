@@ -5,8 +5,7 @@ Replaces text with corresponding 7TV Emotes.
 
 # Demo
 
-![Demo video]()
-![Demo Photo]()
+![Demo GIF](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/demo.gif?raw=true)
 
 # How to use
 
@@ -14,13 +13,13 @@ Install the plugin by building vencord source code with the instructions [here](
 
 Once vencord has been built with the custom userplugin and set vencord to use those built files and restart you will see a new plugin called "7TV Emotes" enable the plugin and start using emotes.
 
-![plugins photo]()
+![plugins photo](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/plugins.png?raw=true)
 
 Type a popular-ish emote and have fun. You may need to adjust some settings to configure this to your liking. See settings below
 
 # Settings
 
-![settings photo]()
+![settings photo](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/settings.png?raw=true)
 
 ### Global Emotes
 
@@ -42,11 +41,11 @@ Fetches this amount of emote pages from the global most popular set. Each page c
 
 ### Show Notifications
 
-Default - Enabled
+Default - Disabled
 
-Shows the user the status of emote fetching. This could get annoying on every restart so feel free to disable. Enabled by default for the user to better understand what is happening
+Shows the user the status of emote fetching. This is more for debugging and really annoying on every startup so disabled by default
 
-![Notifications video]()
+![Notifications GIF](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/notifications.gif?raw=true)
 
 ### Emote Set IDs
 

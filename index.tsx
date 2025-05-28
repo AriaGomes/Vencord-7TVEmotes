@@ -72,7 +72,7 @@ const settings = definePluginSettings({
     showNotifications: {
         type: OptionType.BOOLEAN,
         description: "Show notifications when fetching emotes.",
-        default: true,
+        default: false,
         restartNeeded: false,
     },
     emotePages: {
