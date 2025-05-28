@@ -8,7 +8,14 @@ import { DataStore } from "@api/index";
 import { showNotification } from "@api/Notifications";
 import { definePluginSettings } from "@api/Settings";
 import definePlugin, { OptionType } from "@utils/types";
-import { Button, Forms, React, TextInput, useState } from "@webpack/common";
+import {
+    Button,
+    Forms,
+    React,
+    TextInput,
+    useEffect,
+    useState,
+} from "@webpack/common";
 
 const SEVENTV_API_URL = "https://7tv.io/v4/gql";
 
@@ -47,7 +54,7 @@ const GQLVariables = {
     query: null,
     perPage: 100,
     sort: "TOP_ALL_TIME",
-    page: 1
+    page: 1,
 };
 
 const emoteMap: Record<string, string> = {};
@@ -56,7 +63,8 @@ const emoteMap: Record<string, string> = {};
 const settings = definePluginSettings({
     useGlobalEmotes: {
         type: OptionType.BOOLEAN,
-        description: "Use the global 7TV emotes." +
+        description:
+            "Use the global 7TV emotes." +
             " If disabled, only emotes from the manually entered emote set id will be used.",
         default: true,
         restartNeeded: true,
@@ -69,8 +77,10 @@ const settings = definePluginSettings({
     },
     emotePages: {
         type: OptionType.NUMBER,
-        description: "Number of pages to fetch from the 7TV API. " +
-            "Each page contains 100 emotes, so increasing this will increase how long all emotes are loaded ",
+        description:
+            "Number of pages to fetch from the 7TV API. " +
+            "Each page contains 100 emotes, so increasing this will increase how long all emotes are loaded " +
+            "This only applies when using global emotes.",
         default: 50,
         restartNeeded: true,
     },
@@ -83,7 +93,7 @@ const settings = definePluginSettings({
             { label: "3x", value: "3x" },
             { label: "4x", value: "4x" },
         ],
-        restartNeeded: true
+        restartNeeded: true,
     },
     emoteSetIDs: {
         type: OptionType.COMPONENT,
@@ -95,23 +105,15 @@ const settings = definePluginSettings({
 
             return (
                 <>
-                    <EmoteIDInput
-                        title={"Emote Set ID"}
-                        emoteSetIDs={emoteSetIDs}
-                    />
+                    <EmoteIDInput title={"Emote Set IDs"} emoteSetIDs={emoteSetIDs} />
                 </>
             );
         },
         restartNeeded: true,
     },
-    emoteSetIDsArray: {
-        type: OptionType.CUSTOM,
-        default: [],
-        description: "List of 7TV emote set IDs to fetch emotes from. "
-    }
 });
 
-async function fetchEmoteSetNames(setID: string): Promise<String> {
+async function fetchEmoteSetNames(setID: string): Promise<string | void> {
     try {
         const response = await fetch(SEVENTV_API_URL, {
             method: "POST",
@@ -124,9 +126,9 @@ async function fetchEmoteSetNames(setID: string): Promise<String> {
                     id: setID,
                     query: null,
                     perPage: GQLVariables.perPage,
-                    page: GQLVariables.page
-                }
-            })
+                    page: GQLVariables.page,
+                },
+            }),
         });
         const data = await response.json();
         const emoteSetName = data.data.emoteSets.emoteSet.name;
@@ -137,12 +139,11 @@ async function fetchEmoteSetNames(setID: string): Promise<String> {
         return emoteSetName;
     } catch (err) {
         console.error(`Failed to fetch emote set name for ID ${setID}:`, err);
-        return `Emote Set ${setID}`;
     }
 }
 
 async function fetchEmotesBySetID(setID: string) {
-    for (let page = 1; page <= 10; page++) {
+    for (let page = 1; page <= 10; page++) { // only fetch 10 pages per set, as most sets are limited to 1k emotes
         GQLVariables.page = page;
         try {
             const response = await fetch(SEVENTV_API_URL, {
@@ -156,36 +157,51 @@ async function fetchEmotesBySetID(setID: string) {
                         id: setID,
                         query: null,
                         perPage: GQLVariables.perPage,
-                        page: GQLVariables.page
-                    }
-                })
+                        page: GQLVariables.page,
+                    },
+                }),
             });
             const data = await response.json();
             const emotes = data.data.emoteSets.emoteSet.emotes.items;
             for (const emote of emotes) {
                 // Check if the emote already exists in the map, will only keep the most popular emote with the same name
                 if (!(emote.alias in (window as any).__7tv_emoteMap)) {
-                    (window as any).__7tv_emoteMap[emote.alias] = `https://cdn.7tv.app/emote/${emote.id}/${settings.store.emoteScale}.webp`;
+                    (window as any).__7tv_emoteMap[
+                        emote.alias
+                    ] = `https://cdn.7tv.app/emote/${emote.id}/${settings.store.emoteScale}.webp`;
                 }
             }
-            settings.store.showNotifications && showNotification({
-                title: "Fetching 7TV Emotes...",
-                body: `Fetched ${emotes.length} emotes from set ${setID}, page ${page}.`,
-                noPersist: true,
-                color: "var(--status-success)",
-                icon: emoteMap[Object.keys(emoteMap)[Object.keys(emoteMap).length - 1]],
-                permanent: false,
-                dismissOnClick: true
-            });
-            console.log(`Fetched emotes from set ${setID}, page ${page}:`, Object.keys((window as any).__7tv_emoteMap).length, "emotes");
+            settings.store.showNotifications &&
+                showNotification(
+                    {
+                        title: "Fetching 7TV Emotes...",
+                        body: `Fetched ${emotes.length} emotes from set ${await fetchEmoteSetNames(setID)
+                            .then(name => name || `Emote Set ${setID}`)
+                            .catch(() => `Emote Set ${setID}`)
+                            }, page ${page}. Total Emotes Fetched: ${Object.keys((window as any).__7tv_emoteMap).length}`,
+                        noPersist: true,
+                        color: "var(--status-success)",
+                        icon: emoteMap[
+                            Object.keys(emoteMap)[Object.keys(emoteMap).length - 1]
+                        ],
+                        permanent: false,
+                        dismissOnClick: true,
+                    });
+            console.log(
+                `Fetched emotes from set ${setID}, page ${page}:`,
+                Object.keys((window as any).__7tv_emoteMap).length,
+                "emotes"
+            );
         } catch (err) {
-            console.error(`Failed to fetch emotes from set ${setID}, page ${page}:`, err);
+            console.error(
+                `Failed to fetch emotes from set ${setID}, page ${page}:`,
+                err
+            );
         }
     }
 }
 
 async function fetchEmotes() {
-
     for (const setID of settings.store.emoteSetIDs) {
         if (setID.trim()) {
             await fetchEmotesBySetID(setID);
@@ -203,26 +219,35 @@ async function fetchEmotes() {
                     },
                     body: JSON.stringify({
                         query: GQLSearchquery,
-                        variables: GQLVariables
-                    })
+                        variables: GQLVariables,
+                    }),
                 });
                 const data = await response.json();
                 for (const emote of data.data.search.all.emotes.items) {
                     // Check if the emote already exists in the map, will only keep the most popular emote with the same name
                     if (!(emote.defaultName in (window as any).__7tv_emoteMap)) {
-                        (window as any).__7tv_emoteMap[emote.defaultName] = `https://cdn.7tv.app/emote/${emote.id}/${settings.store.emoteScale}.webp`;
+                        (window as any).__7tv_emoteMap[
+                            emote.defaultName
+                        ] = `https://cdn.7tv.app/emote/${emote.id}/${settings.store.emoteScale}.webp`;
                     }
                 }
-                settings.store.showNotifications && showNotification({
-                    title: "Fetching 7TV Emotes...",
-                    body: `Fetched ${data.data.search.all.emotes.items.length} emotes, page ${page}.`,
-                    noPersist: true,
-                    color: "var(--status-success)",
-                    icon: emoteMap[Object.keys(emoteMap)[Object.keys(emoteMap).length - 1]],
-                    permanent: false,
-                    dismissOnClick: true
-                });
-                console.log(`Fetched emote page ${page}:`, Object.keys((window as any).__7tv_emoteMap).length, "emotes");
+                settings.store.showNotifications &&
+                    showNotification({
+                        title: "Fetching 7TV Emotes...",
+                        body: `Fetched ${data.data.search.all.emotes.items.length} emotes from global most popular, page ${page}. Total Emotes Fetched: ${Object.keys((window as any).__7tv_emoteMap).length}`,
+                        noPersist: true,
+                        color: "var(--status-success)",
+                        icon: emoteMap[
+                            Object.keys(emoteMap)[Object.keys(emoteMap).length - 1]
+                        ],
+                        permanent: false,
+                        dismissOnClick: true,
+                    });
+                console.log(
+                    `Fetched emote page ${page}:`,
+                    Object.keys((window as any).__7tv_emoteMap).length,
+                    "emotes"
+                );
             } catch (err) {
                 console.error(`Failed to fetch page ${page}:`, err);
             }
@@ -230,25 +255,52 @@ async function fetchEmotes() {
     }
 }
 
-function Input({ initialValue, onChange, placeholder }: {
+function Input({
+    initialValue,
+    onChange,
+    placeholder,
+}: {
     placeholder: string;
     initialValue: string;
     onChange(value: string): void;
 }) {
     const [value, setValue] = useState(initialValue);
+    const [setName, setSetName] = useState("Unknown Emote Set");
+
+    useEffect(() => {
+        const fetchName = async () => {
+            const name = await fetchEmoteSetNames(value);
+            if (!name) {
+                setSetName("Unknown Emote Set");
+                return;
+            } else {
+                setSetName(String(name));
+            }
+        };
+        fetchName();
+    }, [value, initialValue]);
+
     return (
-        <TextInput
-            placeholder={placeholder}
-            value={value}
-            onChange={setValue}
-            spellCheck={false}
-            onBlur={() => value !== initialValue && onChange(value)}
-        />
+        <>
+            <TextInput
+                placeholder={placeholder}
+                value={value}
+                onChange={setValue}
+                spellCheck={false}
+                onBlur={() => value !== initialValue && onChange(value)}
+            />
+            <Forms.FormText>{setName || ""}</Forms.FormText>
+        </>
     );
 }
 
-function EmoteIDInput({ title, emoteSetIDs }: { title: string, emoteSetIDs: string[]; }) {
-
+function EmoteIDInput({
+    title,
+    emoteSetIDs,
+}: {
+    title: string;
+    emoteSetIDs: string[];
+}) {
     function onChange(value: string, index: number) {
         emoteSetIDs[index] = value;
 
@@ -267,7 +319,9 @@ function EmoteIDInput({ title, emoteSetIDs }: { title: string, emoteSetIDs: stri
 
     function onClickRemove(index: number) {
         if (emoteSetIDs.length > 1) {
-            emoteSetIDs.splice(index, 1);
+            const updatedEmoteSetIDs = [...emoteSetIDs];
+            updatedEmoteSetIDs.splice(index, 1);
+            settings.store.emoteSetIDs = updatedEmoteSetIDs; // Update the settings store
         }
     }
 
@@ -275,29 +329,34 @@ function EmoteIDInput({ title, emoteSetIDs }: { title: string, emoteSetIDs: stri
         <>
             <Forms.FormTitle tag="h3">{title}</Forms.FormTitle>
             <Forms.FormText>
-                Enter the 7TV emote set IDs to fetch emotes from. You can find the ID in the URL of the emote set page.
+                Enter the 7TV emote set IDs to fetch emotes from. You can find the ID in
+                the URL of the emote set page.
                 <br />
-                Example: <code>https://7tv.app/emote-sets/1234567890abcdef12345678</code>
+                Example:{" "}
+                <code>https://7tv.app/emote-sets/1234567890abcdef12345678</code>
                 <br />
                 Enter: <code>1234567890abcdef12345678</code>
+                <br />
+                This will fetch 10 pages of emotes from each entered set ID. All sets I have seen are limited to 1k emotes
             </Forms.FormText>
             {emoteSetIDs.map((id, index) => (
-                <div key={index} style={{ display: "flex", gap: "0.5em", alignItems: "center" }}>
+                <div
+                    key={`${id}-${index}`} // Ensure a unique and stable key
+                    style={{ display: "flex", gap: "0.5em", alignItems: "center" }}
+                >
                     <Input
                         placeholder="Enter Emote Set ID"
                         initialValue={id}
                         onChange={value => onChange(value, index)}
                     />
-                    <Forms.FormText>
-                        { }
-                    </Forms.FormText>
                     <Button
                         size={Button.Sizes.MIN}
                         onClick={() => onClickRemove(index)}
                         style={{
                             background: "none",
                             color: "var(--status-danger)",
-                            visibility: index === emoteSetIDs.length - 1 ? "hidden" : "visible"
+                            visibility:
+                                index === emoteSetIDs.length - 1 ? "hidden" : "visible",
                         }}
                     >
                         Remove
@@ -307,7 +366,6 @@ function EmoteIDInput({ title, emoteSetIDs }: { title: string, emoteSetIDs: stri
         </>
     );
 }
-
 
 export default definePlugin({
     name: "7TV Emotes",
@@ -360,8 +418,9 @@ export default definePlugin({
     ],
 
     start: async () => {
-
-        const oldEmoteSetIDs = await DataStore.get<string[]>("7TVEmotes_emoteSetIDs");
+        const oldEmoteSetIDs = await DataStore.get<string[]>(
+            "7TVEmotes_emoteSetIDs"
+        );
         if (oldEmoteSetIDs != null) {
             settings.store.emoteSetIDs = oldEmoteSetIDs;
             await DataStore.del("7TVEmotes_emoteSetIDs");
@@ -372,5 +431,5 @@ export default definePlugin({
     },
     stop: () => {
         console.log("Stopping 7TV Emotes plugin.");
-    }
+    },
 });
