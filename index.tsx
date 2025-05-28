@@ -4,8 +4,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { DataStore } from "@api/index";
+import { showNotification } from "@api/Notifications";
 import { definePluginSettings } from "@api/Settings";
 import definePlugin, { OptionType } from "@utils/types";
+import { Button, Forms, React, TextInput, useState } from "@webpack/common";
 
 const SEVENTV_API_URL = "https://7tv.io/v4/gql";
 
@@ -56,19 +59,20 @@ const settings = definePluginSettings({
         description: "Use the global 7TV emotes." +
             " If disabled, only emotes from the manually entered emote set id will be used.",
         default: true,
+        restartNeeded: true,
+    },
+    showNotifications: {
+        type: OptionType.BOOLEAN,
+        description: "Show notifications when fetching emotes.",
+        default: true,
+        restartNeeded: false,
     },
     emotePages: {
         type: OptionType.NUMBER,
         description: "Number of pages to fetch from the 7TV API. " +
             "Each page contains 100 emotes, so increasing this will increase how long all emotes are loaded ",
         default: 50,
-    },
-    emoteSetID: {
-        type: OptionType.STRING,
-        description: "Enter a emote set ID to use instead of fetching the most popular emotes. " +
-            "You can find the ID in the URL of the emote set page on 7TV. " +
-            "For example, for https://7tv.app/emotesets/1234567890abcdef, the ID is 1234567890abcdef.",
-        default: "",
+        restartNeeded: true,
     },
     emoteScale: {
         type: OptionType.SELECT,
@@ -78,13 +82,36 @@ const settings = definePluginSettings({
             { label: "2x", value: "2x" },
             { label: "3x", value: "3x" },
             { label: "4x", value: "4x" },
-        ]
+        ],
+        restartNeeded: true
+    },
+    emoteSetIDs: {
+        type: OptionType.COMPONENT,
+        component: () => {
+            const { emoteSetIDs } = settings.use(["emoteSetIDs"]);
+            if (emoteSetIDs.length === 0) {
+                emoteSetIDs.push(""); // Ensure at least one input
+            }
+
+            return (
+                <>
+                    <EmoteIDInput
+                        title={"Emote Set ID"}
+                        emoteSetIDs={emoteSetIDs}
+                    />
+                </>
+            );
+        },
+        restartNeeded: true,
+    },
+    emoteSetIDsArray: {
+        type: OptionType.CUSTOM,
+        default: [],
+        description: "List of 7TV emote set IDs to fetch emotes from. "
     }
 });
 
-async function fetchEmotesBySetID(setID: string) {
-    GQLVariables.page = 1;
-
+async function fetchEmoteSetNames(setID: string): Promise<String> {
     try {
         const response = await fetch(SEVENTV_API_URL, {
             method: "POST",
@@ -102,26 +129,67 @@ async function fetchEmotesBySetID(setID: string) {
             })
         });
         const data = await response.json();
-        console.log(data);
-        const emotes = data.data.emoteSets.emoteSet.emotes.items;
-        for (const emote of emotes) {
-            // Check if the emote already exists in the map, will only keep the most popular emote with the same name
-            if (!(emote.alias in (window as any).__7tv_emoteMap)) {
-                (window as any).__7tv_emoteMap[emote.alias] = `https://cdn.7tv.app/emote/${emote.id}/${settings.store.emoteScale}.webp`;
-            }
+        const emoteSetName = data.data.emoteSets.emoteSet.name;
+        if (!emoteSetName) {
+            console.warn(`Emote set with ID ${setID} not found.`);
+            return `Emote Set ${setID}`;
         }
-        console.log(`Fetched emotes from set ${setID}:`, Object.keys((window as any).__7tv_emoteMap).length, "emotes");
+        return emoteSetName;
     } catch (err) {
-        console.error(`Failed to fetch emotes from set ${setID}:`, err);
+        console.error(`Failed to fetch emote set name for ID ${setID}:`, err);
+        return `Emote Set ${setID}`;
+    }
+}
+
+async function fetchEmotesBySetID(setID: string) {
+    for (let page = 1; page <= 10; page++) {
+        GQLVariables.page = page;
+        try {
+            const response = await fetch(SEVENTV_API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    query: GQLEmoteSetQuery,
+                    variables: {
+                        id: setID,
+                        query: null,
+                        perPage: GQLVariables.perPage,
+                        page: GQLVariables.page
+                    }
+                })
+            });
+            const data = await response.json();
+            const emotes = data.data.emoteSets.emoteSet.emotes.items;
+            for (const emote of emotes) {
+                // Check if the emote already exists in the map, will only keep the most popular emote with the same name
+                if (!(emote.alias in (window as any).__7tv_emoteMap)) {
+                    (window as any).__7tv_emoteMap[emote.alias] = `https://cdn.7tv.app/emote/${emote.id}/${settings.store.emoteScale}.webp`;
+                }
+            }
+            settings.store.showNotifications && showNotification({
+                title: "Fetching 7TV Emotes...",
+                body: `Fetched ${emotes.length} emotes from set ${setID}, page ${page}.`,
+                noPersist: true,
+                color: "var(--status-success)",
+                icon: emoteMap[Object.keys(emoteMap)[Object.keys(emoteMap).length - 1]],
+                permanent: false,
+                dismissOnClick: true
+            });
+            console.log(`Fetched emotes from set ${setID}, page ${page}:`, Object.keys((window as any).__7tv_emoteMap).length, "emotes");
+        } catch (err) {
+            console.error(`Failed to fetch emotes from set ${setID}, page ${page}:`, err);
+        }
     }
 }
 
 async function fetchEmotes() {
 
-    // If a set ID is provided, fetch emotes from that set first then return and get the rest
-    const setID = settings.store.emoteSetID.trim();
-    if (setID) {
-        await fetchEmotesBySetID(setID);
+    for (const setID of settings.store.emoteSetIDs) {
+        if (setID.trim()) {
+            await fetchEmotesBySetID(setID);
+        }
     }
 
     if (settings.store.useGlobalEmotes) {
@@ -145,6 +213,15 @@ async function fetchEmotes() {
                         (window as any).__7tv_emoteMap[emote.defaultName] = `https://cdn.7tv.app/emote/${emote.id}/${settings.store.emoteScale}.webp`;
                     }
                 }
+                settings.store.showNotifications && showNotification({
+                    title: "Fetching 7TV Emotes...",
+                    body: `Fetched ${data.data.search.all.emotes.items.length} emotes, page ${page}.`,
+                    noPersist: true,
+                    color: "var(--status-success)",
+                    icon: emoteMap[Object.keys(emoteMap)[Object.keys(emoteMap).length - 1]],
+                    permanent: false,
+                    dismissOnClick: true
+                });
                 console.log(`Fetched emote page ${page}:`, Object.keys((window as any).__7tv_emoteMap).length, "emotes");
             } catch (err) {
                 console.error(`Failed to fetch page ${page}:`, err);
@@ -153,10 +230,88 @@ async function fetchEmotes() {
     }
 }
 
+function Input({ initialValue, onChange, placeholder }: {
+    placeholder: string;
+    initialValue: string;
+    onChange(value: string): void;
+}) {
+    const [value, setValue] = useState(initialValue);
+    return (
+        <TextInput
+            placeholder={placeholder}
+            value={value}
+            onChange={setValue}
+            spellCheck={false}
+            onBlur={() => value !== initialValue && onChange(value)}
+        />
+    );
+}
+
+function EmoteIDInput({ title, emoteSetIDs }: { title: string, emoteSetIDs: string[]; }) {
+
+    function onChange(value: string, index: number) {
+        emoteSetIDs[index] = value;
+
+        // If editing the last input and it's not empty, add a new empty input
+        if (index === emoteSetIDs.length - 1 && value.trim() !== "") {
+            emoteSetIDs.push("");
+        }
+
+        // Remove empty non-last inputs
+        for (let i = emoteSetIDs.length - 2; i >= 0; i--) {
+            if (emoteSetIDs[i].trim() === "" && emoteSetIDs[i + 1] === "") {
+                emoteSetIDs.splice(i, 1);
+            }
+        }
+    }
+
+    function onClickRemove(index: number) {
+        if (emoteSetIDs.length > 1) {
+            emoteSetIDs.splice(index, 1);
+        }
+    }
+
+    return (
+        <>
+            <Forms.FormTitle tag="h3">{title}</Forms.FormTitle>
+            <Forms.FormText>
+                Enter the 7TV emote set IDs to fetch emotes from. You can find the ID in the URL of the emote set page.
+                <br />
+                Example: <code>https://7tv.app/emote-sets/1234567890abcdef12345678</code>
+                <br />
+                Enter: <code>1234567890abcdef12345678</code>
+            </Forms.FormText>
+            {emoteSetIDs.map((id, index) => (
+                <div key={index} style={{ display: "flex", gap: "0.5em", alignItems: "center" }}>
+                    <Input
+                        placeholder="Enter Emote Set ID"
+                        initialValue={id}
+                        onChange={value => onChange(value, index)}
+                    />
+                    <Forms.FormText>
+                        { }
+                    </Forms.FormText>
+                    <Button
+                        size={Button.Sizes.MIN}
+                        onClick={() => onClickRemove(index)}
+                        style={{
+                            background: "none",
+                            color: "var(--status-danger)",
+                            visibility: index === emoteSetIDs.length - 1 ? "hidden" : "visible"
+                        }}
+                    >
+                        Remove
+                    </Button>
+                </div>
+            ))}
+        </>
+    );
+}
+
+
 export default definePlugin({
     name: "7TV Emotes",
-    description:
-        "Never hide image links in messages, even if it's the only content",
+    description: "Adds 7TV emotes to Discord messages.",
     authors: [{ name: "AriaGomes", id: 161545039502245888n }],
     settings,
     patches: [
@@ -205,6 +360,12 @@ export default definePlugin({
     ],
 
     start: async () => {
+
+        const oldEmoteSetIDs = await DataStore.get<string[]>("7TVEmotes_emoteSetIDs");
+        if (oldEmoteSetIDs != null) {
+            settings.store.emoteSetIDs = oldEmoteSetIDs;
+            await DataStore.del("7TVEmotes_emoteSetIDs");
+        }
         console.log("Fetching 7TV emotes...");
         await fetchEmotes();
         // console.log((window as any).__7tv_emoteMap);
