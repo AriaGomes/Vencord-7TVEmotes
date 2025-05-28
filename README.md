@@ -1,56 +1,53 @@
 # Vencord-7TVEmotes
 
-Adds 7TV emotes to discord messages.
-Replaces text with corresponding 7TV Emotes.
+The **Vencord-7TVEmotes** plugin enhances Discord messages by replacing text with corresponding 7TV emotes.
 
 # Demo
 
 ![Demo GIF](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/demo.gif?raw=true)
 
-# How to use
+# How to Use
 
-Install the plugin by building vencord source code with the instructions [here](https://docs.vencord.dev/installing/custom-plugins/)
+To install the plugin, build the Vencord source code by following the instructions [here](https://docs.vencord.dev/installing/custom-plugins/). Once Vencord is configured to use the built files, restart Discord. The plugin will appear as "7TV Emotes" in the plugin list. Enable the plugin to start using emotes.
 
-Once vencord has been built with the custom userplugin and set vencord to use those built files and restart you will see a new plugin called "7TV Emotes" enable the plugin and start using emotes.
+![Plugins Screenshot](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/plugins.png?raw=true)
 
-![plugins photo](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/plugins.png?raw=true)
-
-Type a popular-ish emote and have fun. You may need to adjust some settings to configure this to your liking. See settings below
+Type a popular emote or configure the plugin settings to suit your preferences. See the settings section below for more details.
 
 # Settings
 
-![settings photo](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/settings.png?raw=true)
+![Settings Screenshot](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/settings.png?raw=true)
 
 ### Global Emotes
 
-Default - Enabled
+**Default:** Enabled
 
-Fetches the [most popular 7TV emotes](https://7tv.app/emotes). If no setIDs set and this is disabled you will have no emotes. This settings is also affected by the amount of Emote Pages set.
+Fetches the [most popular 7TV emotes](https://7tv.app/emotes). If no emote set IDs are provided and this option is disabled, no emotes will be available. This setting is influenced by the number of emote pages configured.
 
 ### Emote Scale
 
-Default - 1x
+**Default:** 1x
 
-Selects the scale of the emote that will be fetched from 7TV CDN. 1x is more than enough for regular use.
+Specifies the scale of the emote images fetched from the 7TV CDN. The default scale (1x) is recommended for regular use.
 
 ### Emote Pages
 
-Default - 50
+**Default:** 50
 
-Fetches this amount of emote pages from the global most popular set. Each page contains around 100 emotes. Increasing this will increase the time it takes to fetch all emotes. This setting requres that Global Emotes is enabled or this will have no effect
+Defines the number of pages to fetch from the global most popular emote set. Each page contains approximately 100 emotes. Increasing this value will extend the time required to fetch all emotes. This setting requires Global Emotes to be enabled; otherwise, it will have no effect.
 
 ### Show Notifications
 
-Default - Disabled
+**Default:** Disabled
 
-Shows the user the status of emote fetching. This is more for debugging and really annoying on every startup so disabled by default
+Displays notifications about the status of emote fetching. This feature is primarily intended for debugging purposes and is disabled by default to avoid excessive notifications during startup.
 
-![Notifications GIF](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/notifications.gif?raw=true)
+![Notifications Screenshot](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/notifications.gif?raw=true)
 
 ### Emote Set IDs
 
-Default - Empty
+**Default:** Empty
 
-Enter emote set IDs that will be fetched first before the global emotes. You can use this to use your favourite emotes by entering your favourite community set emotes or make your own and use that set here. You can disable global emotes and only use emote set IDs as well. You can enter as many emote set IDs as you would like but will increase the time it takes to fetch them. Each emote set ID will grab 10 pages as all the sets I have seen have a limit of 1k emotes. Each page has around 100 emotes
+Allows users to specify custom emote set IDs to fetch emotes from. This feature enables the use of favorite community emotes or personal emote sets. If Global Emotes is disabled, only the specified emote set IDs will be used. Multiple emote set IDs can be entered, but fetching them may take additional time. Each emote set ID fetches up to 10 pages, with each page containing approximately 100 emotes.
 
-![EmoteIDs photo](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/emoteIDs.png?raw=true)
+![Emote Set IDs Screenshot](https://github.com/AriaGomes/Vencord-7TVEmotes/blob/main/README%20Assests/emoteIDs.png?raw=true)

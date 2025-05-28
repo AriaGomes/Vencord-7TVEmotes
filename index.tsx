@@ -64,29 +64,26 @@ const settings = definePluginSettings({
     useGlobalEmotes: {
         type: OptionType.BOOLEAN,
         description:
-            "Use the global 7TV emotes." +
-            " If disabled, only emotes from the manually entered emote set id will be used.",
+            "Enable the use of global 7TV emotes. If disabled, only emotes from the manually specified emote set IDs will be available.",
         default: true,
         restartNeeded: true,
     },
     showNotifications: {
         type: OptionType.BOOLEAN,
-        description: "Show notifications when fetching emotes.",
+        description: "Display notifications during the emote fetching process. Useful for debugging or monitoring plugin activity.",
         default: false,
         restartNeeded: false,
     },
     emotePages: {
         type: OptionType.NUMBER,
         description:
-            "Number of pages to fetch from the 7TV API. " +
-            "Each page contains 100 emotes, so increasing this will increase how long all emotes are loaded " +
-            "This only applies when using global emotes.",
+            "Specify the number of pages to fetch from the 7TV API. Each page contains up to 100 emotes. Increasing this value may extend the loading time. This setting is applicable only when global emotes are enabled.",
         default: 50,
         restartNeeded: true,
     },
     emoteScale: {
         type: OptionType.SELECT,
-        description: "Scale of the emote image in messages.", // I have no idea if this has any effect when the image is turned into emoji. but will use the corresponding image scale for it.
+        description: "Define the scale of emote images displayed in messages. Choose from 1x, 2x, 3x, or 4x for optimal visual quality.",
         options: [
             { label: "1x", value: "1x", default: true },
             { label: "2x", value: "2x" },
@@ -109,11 +106,12 @@ const settings = definePluginSettings({
                 </>
             );
         },
+        description: "Enter custom 7TV emote set IDs to fetch emotes from. This allows the use of specific community or personal emote sets.",
         restartNeeded: true,
     },
 });
 
-async function fetchEmoteSetNames(setID: string): Promise<string | void> {
+async function fetchEmoteSetName(setID: string): Promise<string | void> {
     try {
         const response = await fetch(SEVENTV_API_URL, {
             method: "POST",
@@ -175,7 +173,7 @@ async function fetchEmotesBySetID(setID: string) {
                 showNotification(
                     {
                         title: "Fetching 7TV Emotes...",
-                        body: `Fetched ${emotes.length} emotes from set ${await fetchEmoteSetNames(setID)
+                        body: `Fetched ${emotes.length} emotes from set ${await fetchEmoteSetName(setID)
                             .then(name => name || `Emote Set ${setID}`)
                             .catch(() => `Emote Set ${setID}`)
                             }, page ${page}. Total Emotes Fetched: ${Object.keys((window as any).__7tv_emoteMap).length}`,
@@ -269,7 +267,7 @@ function Input({
 
     useEffect(() => {
         const fetchName = async () => {
-            const name = await fetchEmoteSetNames(value);
+            const name = await fetchEmoteSetName(value);
             if (!name) {
                 setSetName("Unknown Emote Set");
                 return;
@@ -329,15 +327,14 @@ function EmoteIDInput({
         <>
             <Forms.FormTitle tag="h3">{title}</Forms.FormTitle>
             <Forms.FormText>
-                Enter the 7TV emote set IDs to fetch emotes from. You can find the ID in
-                the URL of the emote set page.
+                Enter the 7TV emote set IDs to retrieve emotes from. The emote set ID can be found in the URL of the emote set page.
                 <br />
-                Example:{" "}
+                Example:
                 <code>https://7tv.app/emote-sets/1234567890abcdef12345678</code>
                 <br />
-                Enter: <code>1234567890abcdef12345678</code>
+                To use this emote set, enter: <code>1234567890abcdef12345678</code>
                 <br />
-                This will fetch 10 pages of emotes from each entered set ID. All sets I have seen are limited to 1k emotes
+                Each emote set ID will fetch up to 10 pages of emotes, with each page containing approximately 100 emotes. Note that most emote sets are limited to 1,000 emotes.
             </Forms.FormText>
             {emoteSetIDs.map((id, index) => (
                 <div
